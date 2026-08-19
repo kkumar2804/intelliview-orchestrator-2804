@@ -5,6 +5,7 @@ Handles schedule creation, calendar listings, upcoming events, and triggering em
 
 import logging
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -27,8 +28,12 @@ class CreateScheduleRequest(BaseModel):
     interviewer_id: str = Field(
         ..., description="Name or ID of the assigned interviewer"
     )
-    scheduled_at: datetime = Field(
+        scheduled_at: datetime = Field(
         ..., description="ISO datetime string for the scheduled interview"
+    )
+    timezone: str = Field(
+        default="UTC",
+        description="IANA timezone name the scheduled_at was entered in, e.g. 'Asia/Kolkata'",
     )
     notes: str | None = Field(
         default=None, description="Optional interview notes or description"
@@ -75,9 +80,24 @@ def create_schedule_routes() -> APIRouter:
                 )
 
             # Ensure datetime is timezone-aware
-            scheduled_at = payload.scheduled_at
-            if scheduled_at.tzinfo is None:
-                scheduled_at = scheduled_at.replace(tzinfo=timezone.utc)
+                # Localize using the booking timezone, then convert to UTC for storage.
+    # This fixes midnight-boundary bugs: e.g. 2026-08-20T23:30 in
+    # Asia/Kolkata is 2026-08-20T18:00 UTC, not the next calendar day.
+    try:
+        booking_tz = ZoneInfo(payload.timezone)
+    except (ZoneInfoNotFoundError, ValueError):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown timezone: '{payload.timezone}'",
+        )
+
+    scheduled_at = payload.scheduled_at
+    if scheduled_at.tzinfo is None:
+        scheduled_at = scheduled_at.replace(tzinfo=booking_tz)
+    else:
+        scheduled_at = scheduled_at.astimezone(booking_tz)
+
+    scheduled_at = scheduled_at.astimezone(timezone.utc)
 
             # Validate that scheduled_at is in the future
             now_utc = datetime.now(timezone.utc)
