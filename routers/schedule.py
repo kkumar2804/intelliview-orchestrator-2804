@@ -151,6 +151,11 @@ def create_schedule_routes() -> APIRouter:
                 candidate_id=payload.candidate_id,
                 interviewer_id=payload.interviewer_id,
                 scheduled_at=scheduled_at,
+                timezone=booking_tz.key,  # canonical IANA name, not the raw
+                                          # input (e.g. "IST" -> "Asia/Kolkata"),
+                                          # so downstream Intl.DateTimeFormat
+                                          # calls on the frontend always get a
+                                          # valid IANA zone name.
                 status="scheduled",
                 notes=payload.notes,
             )
@@ -188,6 +193,7 @@ def create_schedule_routes() -> APIRouter:
                     "candidate_email": candidate_email,
                     "interviewer_id": schedule.interviewer_id,
                     "scheduled_at": schedule.scheduled_at.isoformat(),
+                    "timezone": schedule.timezone,
                     "status": schedule.status,
                     "notes": schedule.notes,
                     "created_at": schedule.created_at.isoformat(),
@@ -241,6 +247,7 @@ def create_schedule_routes() -> APIRouter:
                         "candidate_email": cand.email if cand else None,
                         "interviewer_id": sched.interviewer_id,
                         "scheduled_at": sched.scheduled_at.isoformat(),
+                        "timezone": sched.timezone,
                         "status": sched.status,
                         "notes": sched.notes,
                         "created_at": sched.created_at.isoformat(),
@@ -286,6 +293,7 @@ def create_schedule_routes() -> APIRouter:
                         "candidate_email": cand.email if cand else None,
                         "interviewer_id": sched.interviewer_id,
                         "scheduled_at": sched.scheduled_at.isoformat(),
+                        "timezone": sched.timezone,
                         "status": sched.status,
                         "notes": sched.notes,
                     }
@@ -327,6 +335,7 @@ def create_schedule_routes() -> APIRouter:
                 "candidate_email": cand.email if cand else None,
                 "interviewer_id": sched.interviewer_id,
                 "scheduled_at": sched.scheduled_at.isoformat(),
+                "timezone": sched.timezone,
                 "status": sched.status,
                 "notes": sched.notes,
                 "created_at": sched.created_at.isoformat(),
@@ -390,6 +399,7 @@ def create_schedule_routes() -> APIRouter:
                     "id": schedule.id,
                     "status": schedule.status,
                     "scheduled_at": schedule.scheduled_at.isoformat(),
+                    "timezone": schedule.timezone,
                     "notes": schedule.notes,
                 },
             }
